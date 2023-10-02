@@ -4,64 +4,76 @@ Created on Wed May 31 23:34:03 2023
 """
 
 import torch
-import torch.nn as nn
+from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d
+from torch_geometric.nn import global_mean_pool, GCNConv
+from torch_geometric.utils import add_self_loops, degree
 
-class New_conv(nn.Module):
+
+class GCNN(torch.nn.Module):
+    def __init__(self,
+                 in_dim,
+                 out_dim,
+                 hidden_dim=64,
+                 n_conv_layer=3):
+        super(GCNN, self).__init__()
+
+        # setup linear layer before gnn
+        self.lin = Linear(in_dim, hidden_dim)
+        
+        #setup activation layer
+        self.act = ReLU()
+                
+        # setup message passing layers
+        self.conv_list = ModuleList()
+        for _ in range(n_conv_layer):
+            conv = GCNConv(hidden_dim, hidden_dim, improved=True)
+            self.conv_list.append(conv)
+            
+        # Batch normalization for fast convergence
+        self.batch_norm = BatchNorm1d(hidden_dim)
     
-    def __init__(self, atom_fea_len, nbr_fea_len):
-        super(ConvLayer, self).__init__()
-        self.atom_fea_len = atom_fea_len
-        self.nbr_fea_len = nbr_fea_len
-        self.fc_full = nn.Linear(2*self.atom_fea_len+self.nbr_fea_len,
-                                 2*self.atom_fea_len)
-        self.sigmoid = nn.Sigmoid()
-        self.softplus1 = nn.Softplus()
-        self.bn1 = nn.BatchNorm1d(2*self.atom_fea_len)
-        self.bn2 = nn.BatchNorm1d(self.atom_fea_len)
-        self.softplus2 = nn.Softplus()
+    def forward(self, data):
+        x, edge_index, edge_attr, symmetry, global_idx, target = \
+            data.x, data.edge_index, data.edge_attr, data.symmetry, data.global_idx, data.y
 
-    def forward(self, atom_in_fea, nbr_fea, nbr_fea_idx):
-        # TODO will there be problems with the index zero padding?
-        N, M = nbr_fea_idx.shape
-        # convolution
-        atom_nbr_fea = atom_in_fea[nbr_fea_idx, :]
-        total_nbr_fea = torch.cat(
-            [atom_in_fea.unsqueeze(1).expand(N, M, self.atom_fea_len),
-             atom_nbr_fea, nbr_fea], dim=2)
-        total_gated_fea = self.fc_full(total_nbr_fea)
-        total_gated_fea = self.bn1(total_gated_fea.view(
-            -1, self.atom_fea_len*2)).view(N, M, self.atom_fea_len*2)
-        nbr_filter, nbr_core = total_gated_fea.chunk(2, dim=2)
-        nbr_filter = self.sigmoid(nbr_filter)
-        nbr_core = self.softplus1(nbr_core)
-        nbr_sumed = torch.sum(nbr_filter * nbr_core, dim=1)
-        nbr_sumed = self.bn2(nbr_sumed)
-        out = self.softplus2(atom_in_fea + nbr_sumed)
+        # Step 1: Add self-loops to the adjacency matrix.
+        edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+
+        # Step 2: Linearly transform node feature matrix.
+        x = self.lin(x)
+
+        # Step 3: Compute normalization.
+        row, col = edge_index
+        deg = degree(col, x.size(0), dtype=x.dtype)
+        deg_inv_sqrt = deg.pow(-0.5)
+        deg_inv_sqrt[deg_inv_sqrt == float('inf')] = 0
+        norm = deg_inv_sqrt[row] * deg_inv_sqrt[col]
+
+        # Step 4-5: Start propagating messages.
+        out = self.propagate(edge_index, x=x, norm=norm)
+
+        # Step 6: Apply a final bias vector.
+        out += self.bias
+
         return out
 
-class Pooling(nn.Module):
-    def __init__(self, atom_fea):
-        
+    def message(self, x_j, norm):
+        # x_j has shape [E, out_channels]
 
-class Cgcnn(nn.Module):
-    """
-    Body of graph neuron network model
-    """
+        # Step 4: Normalize node features.
+        return norm.view(-1, 1) * x_j
     
+class MLP(torch.nn.Module):
+    # multilayer perceptron after message passing layers
     def __init__(self,
-                 data,
-                 atom_fea_len,
-                 nbr_fea_len,
-                 conv_layers=4
-                 ):
-        self.linear1 = nn.Linear(atom_fea_len, 64)
-        self.new_conv = nn.ModuleList([ConvLayer(atom_fea_len, nbr_fea_len)
-                                    for _ in range(conv_layers)])
-        self.pooling = nn.AdaptiveAvgPool1d(32)
-        self.linear2 = nn.Linear(32, 120)
-        self.dropout = nn.Dropout(p=0.4)
-        self.relu = nn.ReLU()
-        self.conv = nn.Conv1d(48, 1)
-    
-    def forward():
-    
+                 hidden_dim,
+                 n_linear=1):
+        super(MLP, self).__init__()
+        self.lin_list = ModuleList()
+        for _ in range(n_linear):
+            self.lin_list.append(Linear(hidden_dim, hidden_dim))
+        self.act = ReLU()
+        self.out_1 = Linear(hidden_dim, 32)
+        self.out_2 = Linear(32, 1)
+        
+    def forward(self, data):

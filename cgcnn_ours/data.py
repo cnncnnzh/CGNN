@@ -54,7 +54,7 @@ def generate_dataset(root_dir, data_options):
         dataset = Dataset_pyg(root_dir, data_options)
     else:
         Dataset_pyg(root_dir, data_options).process()
-        dataset = Dataset_pyg(root_dir, )
+        dataset = Dataset_pyg(root_dir, data_options)
     return dataset
 
 class Dataset_pyg(InMemoryDataset):
@@ -122,7 +122,7 @@ class Dataset_pyg(InMemoryDataset):
                     nbr_fea.append(list(map(lambda x: x[1],
                                             nbr[:self.data_options['max_num_nbr']])))
             target = torch.Tensor([float(target)])
-            
+
             edge_index = [[], []]
             for i, neighbor in enumerate(nbr_fea_idx):
                 edge_index[0] += len(neighbor) * [i]
@@ -146,15 +146,14 @@ class Dataset_pyg(InMemoryDataset):
             data.x = torch.Tensor(np.vstack([ATOM_PROPS[str(fea[0])] for fea in atom_fea]))
             data.edge_index = torch.LongTensor(edge_index)
             data.edge_attr = torch.Tensor(edge_dist)
-            # data.symmetry = symmetry
-            # data.global_idx = global_idx
+            data.symmetry = symmetry
+            data.global_idx = global_idx
             data_list.append(data)
             
             ## set target values
             data.y = target
         
         data, slices = self.collate(data_list)
-
         torch.save((data, slices), self.processed_paths[0])
        
 
@@ -171,4 +170,4 @@ if __name__ == 'main':
                      'batch_size':32,
                      'num_workers':1}
     dataset = generate_dataset(root_dir, data_options)
-    data_loader(dataset, batch_options)
+    train_loader, val_loader, test_loader = data_loader(dataset, batch_options)

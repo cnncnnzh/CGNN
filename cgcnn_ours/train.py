@@ -3,14 +3,15 @@
 Created on Wed May 31 23:34:03 2023
 """
 
-from data import Data_parser, data_loader
+from data import generate_dataset, data_loader
+import torch
 
-def main(data_options,
+def train(data_options,
          batch_options,
-         train_options,):
-    dataset = Data_parser(**data_options)
-    train_loader, val_loader, test_loader = data_loader(dataset, **batch_options)
-    return train_loader
+         train_options,
+         device,):
+    dataset = generate_dataset(root_dir, data_options)
+    train_loader, val_loader, test_loader = data_loader(dataset, batch_options)
     
     
     
@@ -25,8 +26,11 @@ def train_model(train_loader, model, criterion, optimizer, epoch):
 
 
 if __name__ == '__main__':
-    data_options = {'root_dir':r'D:\Dropbox\Vasp_home\Machine_learning\root_dir_added',
-                    'max_num_nbr':12,
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
+    root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'
+    data_options = {'max_num_nbr':12,
                     'radius':8,
                     'dmin':0,
                     'step':0.2,
