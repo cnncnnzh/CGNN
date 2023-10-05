@@ -30,21 +30,24 @@ def data_loader(dataset,
     train_set, val_set, test_set = random_split(dataset,
                                       [train_size, val_size, test_size],
                                       generator=torch.Generator().manual_seed(0))
-    train_loader = DataLoader(train_set,
-                              batch_size=batch_options['batch_size'],
-                              shuffle=True,
-                              num_workers=batch_options['num_workers']
-                              )
-    val_loader = DataLoader(val_set,
-                            batch_size=batch_options['batch_size'],
-                            shuffle=True,
-                            num_workers=batch_options['num_workers']
-                            )
-    test_loader = DataLoader(test_set,
-                             batch_size=batch_options['batch_size'],
-                             shuffle=True,
-                             num_workers=batch_options['num_workers']
-                             )
+    train_loader = DataLoader(
+        train_set,
+        batch_size=batch_options['batch_size'],
+        shuffle=True,
+        num_workers=batch_options['num_workers']
+    )
+    val_loader = DataLoader(
+        val_set,
+        batch_size=batch_options['batch_size'],
+        shuffle=True,
+        num_workers=batch_options['num_workers']
+    )
+    test_loader = DataLoader(
+        test_set,
+        batch_size=batch_options['batch_size'],
+        shuffle=True,
+        num_workers=batch_options['num_workers']
+    )
     
     return train_loader, val_loader, test_loader
 

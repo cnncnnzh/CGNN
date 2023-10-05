@@ -4,21 +4,23 @@ Created on Wed May 31 23:34:03 2023
 """
 
 import torch
-from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d
-from torch_geometric.nn import global_mean_pool, GCNConv
+from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d, Dropout
+from torch_geometric.nn import global_mean_pool, GCNConv, Set2Set
 from torch_geometric.utils import add_self_loops, degree
-
 
 class GCNN(torch.nn.Module):
     '''
     main graph concolutional neuron network class
     '''
-    def __init__(self,
-                 in_dim,
-                 out_dim,
-                 hidden_dim=64,
-                 n_conv_layer=3,
-                 n_linear=1):
+    def __init__(
+        self,
+        in_dim,
+        out_dim,
+        hidden_dim=64,
+        n_conv_layer=3,
+        n_linear=1,
+        dropout_rate=0.2
+    ):
         super(GCNN, self).__init__()
 
         # setup linear layer before gnn
@@ -32,12 +34,18 @@ class GCNN(torch.nn.Module):
         for _ in range(n_conv_layer):
             conv = GCNConv(hidden_dim, hidden_dim, improved=True)
             self.conv_list.append(conv)
-            
-        # Batch normalization for fast convergence
+        
+        # batch normalization for fast convergence
         self.batch_norm = BatchNorm1d(hidden_dim)
         
+        # pooling layer
+        self.set2set = Set2Set(hidden_dim, 3)
+        
+        # dropout
+        self.dropout = Dropout(dropout_rate)
+        
         # Post cgnn layers
-        self.mlp = MLP(hidden_dim, n_linear)
+        self.mlp = MLP(hidden_dim * 2, n_linear)
     
     def forward(self, data):
         x, edge_index, edge_attr, symmetry, global_idx, target = \
@@ -49,11 +57,14 @@ class GCNN(torch.nn.Module):
         # cgnn
         for conv in self.conv_list:
             x = self.batch_norm(conv(x, edge_index, edge_attr))
-        
+                    
         # add global featrures here
         
-        
-        # post cgnn
+        # pooling and dropout
+        x = self.set2set(x, data.batch)
+        x = self.dropout(x)
+
+        # post cgnn    
         x = self.mlp(x)
 
         return x
@@ -82,5 +93,5 @@ class MLP(torch.nn.Module):
         x = self.act(x)
         x = self.out_2(x)
         x = self.act(x)
-        return x
+        return x.reshape(1,-1)
             
