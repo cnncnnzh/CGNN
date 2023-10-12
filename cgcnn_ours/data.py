@@ -15,9 +15,16 @@ from torch.utils.data import Dataset, DataLoader, random_split
 from pymatgen.core.structure import Structure
 
 from torch_geometric.data import DataLoader, InMemoryDataset, Data
+from torch_geometric.utils import add_self_loops
 
 from atom_props import ATOM_PROPS
     
+def gaussian_converter(nbr_dists, start, stop, resolution, width):
+    offset = torch.linspace(start, stop, resolution)
+    coeff = -0.5 / ((stop - start) * width) ** 2
+    nbr_dists = nbr_dists - offset.view(1, -1)
+    return torch.exp(coeff * torch.pow(nbr_dists, 2))
+                      
 
 def data_loader(dataset,
                 batch_options):
@@ -98,10 +105,16 @@ class Dataset_pyg(InMemoryDataset):
         
         ## read structrues
         data_list = []
+        count = 0
         for cif_id, target in id_prop_data:
             data = Data()
+            
+            file = os.path.join(self.root, cif_id+'.cif')
+            if not os.path.exists(file):
+                warnings.warn('{} in targets.csv not exist. Ignored'.format(cif_id))
+                continue
             # generate pymatgen Structure object for idx 
-            crystal = Structure.from_file(os.path.join(self.root, cif_id+'.cif'))
+            crystal = Structure.from_file(file)
             # add atomic features
             atom_fea = np.vstack([[crystal[i].specie.number]
                                   for i in range(len(crystal))])
@@ -125,7 +138,7 @@ class Dataset_pyg(InMemoryDataset):
                     nbr_fea.append(list(map(lambda x: x[1],
                                             nbr[:self.data_options['max_num_nbr']])))
             target = torch.Tensor([float(target)])
-
+            
             edge_index = [[], []]
             for i, neighbor in enumerate(nbr_fea_idx):
                 edge_index[0] += len(neighbor) * [i]
@@ -144,24 +157,42 @@ class Dataset_pyg(InMemoryDataset):
             global_idx = np.zeros(100)
             global_idx[counts[0].astype(int)] += counts[1] / len(atom_fea)
             
+            edge_index, edge_weight = add_self_loops(
+                torch.LongTensor(edge_index), torch.Tensor(edge_dist), fill_value=0
+            )
+            
+            # gaussian smearing of bond distance
+            edge_attr = gaussian_converter(edge_weight,
+                                             start=self.data_options['gstart'],
+                                             stop=self.data_options['gstop'],
+                                             resolution=self.data_options['gresolution'],
+                                             width=self.data_options['gwidth'])
+            
             ## set attributes to data
             # save index of atoms instead of all featrues to save space
             data.x = torch.Tensor(np.vstack([ATOM_PROPS[str(fea[0])] for fea in atom_fea]))
-            data.edge_index = torch.LongTensor(edge_index)
-            data.edge_attr = torch.Tensor(edge_dist)
+            data.edge_index = edge_index
+            data.edge_dist = edge_weight
+            data.edge_attr = edge_attr
             data.symmetry = symmetry
             data.global_idx = global_idx
             data_list.append(data)
-            
+
             ## set target values
             data.y = target
+            # print(data)
+            
+            count += 1
+            if count % 100 == 0:  
+                print('processed {} files'.format(count))
         
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
        
 
 if __name__ == 'main':
-    root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'
+    # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'
+    root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\deeperGATGNN\data\bulk_data\bulk_data_new'
     data_options = {'max_num_nbr':12,
                     'radius':8,
                     'dmin':0,

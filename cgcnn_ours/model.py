@@ -5,7 +5,7 @@ Created on Wed May 31 23:34:03 2023
 
 import torch
 from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d, Dropout
-from torch_geometric.nn import global_mean_pool, GCNConv, Set2Set
+from torch_geometric.nn import global_mean_pool, GCNConv, Set2Set, CGConv
 from torch_geometric.utils import add_self_loops, degree
 
 class GCNN(torch.nn.Module):
@@ -17,7 +17,7 @@ class GCNN(torch.nn.Module):
         in_dim,
         out_dim,
         hidden_dim=64,
-        n_conv_layer=3,
+        n_conv_layer=5,
         n_linear=1,
         dropout_rate=0.2
     ):
@@ -48,17 +48,20 @@ class GCNN(torch.nn.Module):
         self.mlp = MLP(hidden_dim * 2, n_linear)
     
     def forward(self, data):
-        x, edge_index, edge_attr, symmetry, global_idx, target = \
-            data.x, data.edge_index, data.edge_attr, data.symmetry, data.global_idx, data.y
+        x, edge_index, edge_dist, symmetry, global_idx = \
+            data.x, data.edge_index, data.edge_dist, data.symmetry, data.global_idx
         
         # pre cgnn
         x = self.act(self.lin(x))
         
         # cgnn
         for conv in self.conv_list:
-            x = self.batch_norm(conv(x, edge_index, edge_attr))
-                    
+            x = conv(x, edge_index, edge_dist)
+            x = self.batch_norm(x)
+        x = self.act(x)
         # add global featrures here
+        
+        
         
         # pooling and dropout
         x = self.set2set(x, data.batch)
@@ -92,6 +95,6 @@ class MLP(torch.nn.Module):
         x = self.out_1(x)
         x = self.act(x)
         x = self.out_2(x)
-        x = self.act(x)
+        # x = self.act(x)
         return x.reshape(1,-1)
             

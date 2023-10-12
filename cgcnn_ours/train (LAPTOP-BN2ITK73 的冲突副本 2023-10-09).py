@@ -11,7 +11,6 @@ import torch
 from torch import nn
 from torch import optim
 import copy
-from gcn import GCN
 
 def evaluate(
     model,
@@ -24,12 +23,10 @@ def evaluate(
     for data in loader:
         data = data.to(device=device)
         pred = model(data)
-        loss = loss_func(torch.squeeze(pred), torch.squeeze(data.y))
+        loss = loss_func(pred, torch.squeeze(data.y))
         total_loss += loss.item()
-        # count += pred.size(0)
-        count += 1
+        count += pred.size(0)
     return total_loss/count
-    return total_loss
 
 def train(
     root_dir,
@@ -46,8 +43,6 @@ def train(
     train_loader, val_loader, test_loader = data_loader(dataset, batch_options)
 
     model = GCNN(in_dim, 1, **model_options)
-    # model = GCN(dataset)
-    
     # load existed model
     saved_model = os.path.join(root_dir, 'saved_model.pt')
     if os.path.exists(saved_model):
@@ -70,7 +65,6 @@ def train(
     # the main training loop
     train_losses, val_losses = [], []
     best_score = float('inf')
-    # print([x.y for x in train_loader.dataset])
     for epoch in range(train_options['epochs']):
         model.train()
         
@@ -78,17 +72,16 @@ def train(
         epoch_train_loss = 0
         train_count = 0
         for data in train_loader:
+            # print(data)
             data = data.to(device=device)
             pred = model(data)
+            loss = loss_func(pred, torch.squeeze(data.y))
             optimizer.zero_grad()
-            # print('pred', pred)
-            # print('y', torch.squeeze(data.y))
-            loss = loss_func(torch.squeeze(pred), torch.squeeze(data.y))
             loss.backward()
             optimizer.step()
             epoch_train_loss += loss.item()
-            train_count += 1
-            # train_count += torch.squeeze(data.y).size(0)
+            train_count += pred.size(0)
+            print(loss.item())
         epoch_train_loss /= train_count
         train_losses.append(epoch_train_loss)
         print('training loss after epoch {} is {}'.format(epoch+1, epoch_train_loss))
@@ -115,40 +108,35 @@ def train(
     return train_losses, val_losses, [best_loss, last_loss]
     
 if __name__ == '__main__':
-    # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'
-    import matplotlib.pyplot as plt
+    
     root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\deeperGATGNN\data\bulk_data\bulk_data_new'
-    # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\neg_freq'
     data_options = {
         'max_num_nbr':12,
         'radius':8,
-        'gstart':0,
-        'gstop':5.0,
-        'gresolution':50,
-        'gwidth':0.05,
-        'random_seed':128
+        'dmin':0,
+        'step':0.2,
+        'random_seed':64
     }
     batch_options = {
         'train_ratio':0.8,
         'val_ratio':0.1,
         'test_ratio':0.1,
-        'batch_size':256,
+        'batch_size':64,
         'num_workers':1
     }
     model_options = {
         'hidden_dim':64,
-        'n_conv_layer':3,
-        'n_linear':1,
-        'dropout_rate':0.1
+        'n_conv_layer':10,
+        'n_linear':3,
+        'dropout_rate':0.2
     }
     train_options = {
-        'epochs':280,
+        'epochs':70,
         'optimizer':'Adam',
         'lr':0.01,
+        'dropout':0.0,
         'scheduler':'LinearLR',
         'loss_func':'L1Loss'
     }
     
-    train_losses, val_losses, test_loss = train(root_dir, data_options, batch_options, model_options, train_options)
-    plt.plot(train_losses)
-    plt.plot(val_losses)
+    train(root_dir, data_options, batch_options, model_options, train_options)
