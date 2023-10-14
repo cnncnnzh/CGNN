@@ -40,6 +40,11 @@ def train(
 ):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if device == 'cuda':
+        print('running on gpu')
+    if device == 'cpu':
+        print('running on cpu')
+        
     dataset = generate_dataset(root_dir, data_options)
     
     in_dim = dataset.num_features
