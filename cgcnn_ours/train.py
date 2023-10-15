@@ -11,7 +11,6 @@ import torch
 from torch import nn
 from torch import optim
 import copy
-from gcn import GCN
 
 def evaluate(
     model,
@@ -29,7 +28,6 @@ def evaluate(
         # count += pred.size(0)
         count += 1
     return total_loss/count
-    return total_loss
 
 def train(
     root_dir,
@@ -120,17 +118,17 @@ def train(
     return train_losses, val_losses, [best_loss, last_loss]
     
 if __name__ == '__main__':
-    # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'
+    # root_dir = r'..\tests'
     import matplotlib.pyplot as plt
     root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\deeperGATGNN\data\bulk_data\bulk_data_new'
     # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\neg_freq'
     data_options = {
         'max_num_nbr':12,
         'radius':8,
-        'gstart':0,
-        'gstop':5.0,
-        'gresolution':50,
-        'gwidth':0.05,
+        # 'gstart':0,
+        # 'gstop':5.0,
+        # 'gresolution':50,
+        # 'gwidth':0.05,
         'random_seed':128
     }
     batch_options = {
