@@ -5,6 +5,11 @@ Created on Wed May 31 23:34:03 2023
 
 import argparse
 import time
+import sys
+import matplotlib.pyplot as plt
+import os
+
+from cgnn import train, predict
 
 parser = argparse.ArgumentParser(description='CGNN')
 
@@ -154,10 +159,26 @@ def main():
         'scheduler':args.scheduler,
         'loss_func':args.loss_func
     }
+    
+    
+    
+    if args.mode == 'train':
+        train_losses, val_losses, test_loss = train(
+            args.root_dir,
+            data_options,
+            batch_options,
+            model_options,
+            train_options
+            )
+        plt.plot(train_losses)
+        plt.plot(val_losses)
+        
+        plt.savefig(os.path.join(args.root_dir, 'epoch_loss.png'))
+        
+    elif args.mode == 'predict':
+        pass
 
 
 
 
 
-
-if __name__ == '__main__':
