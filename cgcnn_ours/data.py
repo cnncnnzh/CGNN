@@ -148,13 +148,13 @@ class Dataset_pyg(InMemoryDataset):
             
             ## global features
             # get crystal system
-            system = np.digitize(crystal.get_space_group_info()[0],
+            system = np.digitize(crystal.get_space_group_info()[1],
                                  np.array([3, 16, 75, 143, 168, 195])) 
             symmetry = np.zeros(7)
             symmetry[system] = 1
             # get global atom indices
             counts = np.unique(atom_fea, return_counts=True)
-            global_idx = np.zeros(100)
+            global_idx = np.zeros(len(ATOM_PROPS['1']))
             global_idx[counts[0].astype(int)] += counts[1] / len(atom_fea)
             
             edge_index, edge_weight = add_self_loops(
@@ -163,10 +163,10 @@ class Dataset_pyg(InMemoryDataset):
             
             # gaussian smearing of bond distance
             edge_attr = gaussian_converter(edge_weight,
-                                             start=self.data_options['gstart'],
-                                             stop=self.data_options['gstop'],
-                                             resolution=self.data_options['gresolution'],
-                                             width=self.data_options['gwidth'])
+                                              start=self.data_options['gstart'],
+                                              stop=self.data_options['gstop'],
+                                              resolution=self.data_options['gresolution'],
+                                              width=self.data_options['gwidth'])
             
             ## set attributes to data
             # save index of atoms instead of all featrues to save space
@@ -174,9 +174,9 @@ class Dataset_pyg(InMemoryDataset):
             data.edge_index = edge_index
             data.edge_dist = edge_weight
             data.edge_attr = edge_attr
-            data.symmetry = symmetry
-            data.global_idx = global_idx
-            data_list.append(data)
+            data.symmetry = torch.Tensor(symmetry)
+            data.global_idx = torch.Tensor(global_idx)
+            data_list.append(data)       
 
             ## set target values
             data.y = target
@@ -185,7 +185,7 @@ class Dataset_pyg(InMemoryDataset):
             count += 1
             if count % 100 == 0:  
                 print('processed {} files'.format(count))
-        
+            # print(data)
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
        

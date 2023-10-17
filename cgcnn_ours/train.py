@@ -38,9 +38,9 @@ def train(
 ):
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if device == 'cuda':
+    if device.type == 'cuda':
         print('running on gpu')
-    if device == 'cpu':
+    if device.type == 'cpu':
         print('running on cpu')
         
     dataset = generate_dataset(root_dir, data_options)
@@ -118,17 +118,17 @@ def train(
     return train_losses, val_losses, [best_loss, last_loss]
     
 if __name__ == '__main__':
-    # root_dir = r'..\tests'
     import matplotlib.pyplot as plt
+    # root_dir = r'..\tests'
     root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\deeperGATGNN\data\bulk_data\bulk_data_new'
     # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\neg_freq'
     data_options = {
         'max_num_nbr':12,
         'radius':8,
-        # 'gstart':0,
-        # 'gstop':5.0,
-        # 'gresolution':50,
-        # 'gwidth':0.05,
+        'gstart':0,
+        'gstop':5.0,
+        'gresolution':50,
+        'gwidth':0.05,
         'random_seed':128
     }
     batch_options = {

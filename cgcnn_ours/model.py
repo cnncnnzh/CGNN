@@ -45,12 +45,14 @@ class GCNN(torch.nn.Module):
         self.dropout = Dropout(dropout_rate)
         
         # Post cgnn layers
-        self.mlp = MLP(hidden_dim * 2, n_linear)
+        self.mlp = MLP(hidden_dim * 2 + 7, n_linear)
     
     def forward(self, data):
         x, edge_index, edge_dist, symmetry, global_idx = \
             data.x, data.edge_index, data.edge_dist, data.symmetry, data.global_idx
-        
+        # print(data)
+        # print('symmetry ',data.symmetry.size())
+        # print('global index ',data.global_idx.size())
         # pre cgnn
         x = self.act(self.lin(x))
         
@@ -59,12 +61,13 @@ class GCNN(torch.nn.Module):
             x = conv(x, edge_index, edge_dist)
             x = self.batch_norm(x)
         x = self.act(x)
-        # add global featrures here
-        
-        
         
         # pooling and dropout
         x = self.set2set(x, data.batch)
+        
+        # add global featrures here
+        symmetry = symmetry.reshape(len(symmetry)//7, 7)
+        x = torch.cat((x, symmetry), 1)
         x = self.dropout(x)
 
         # post cgnn    
@@ -78,14 +81,14 @@ class MLP(torch.nn.Module):
     multilayer perceptron after message passing layers
     '''
     def __init__(self,
-                 hidden_dim,
+                 in_dim,
                  n_linear):
         super(MLP, self).__init__()
         self.lin_list = ModuleList()
         for _ in range(n_linear):
-            self.lin_list.append(Linear(hidden_dim, hidden_dim))
+            self.lin_list.append(Linear(in_dim, in_dim))
         self.act = ReLU()
-        self.out_1 = Linear(hidden_dim, 32)
+        self.out_1 = Linear(in_dim, 32)
         self.out_2 = Linear(32, 1)
         
     def forward(self, x):
