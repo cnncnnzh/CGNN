@@ -9,7 +9,7 @@ import sys
 import matplotlib.pyplot as plt
 import os
 
-from cgnn import train, predict
+from cgcnn_ours import train, predict
 
 parser = argparse.ArgumentParser(description='CGNN')
 
@@ -75,7 +75,7 @@ parser.add_argument(
 )
 parser.add_argument(
     '--hidden_dim',
-    default='0.1',
+    default='64',
     help='dimension of the layer after the pre linear layers'
 )
 parser.add_argument(
@@ -131,11 +131,11 @@ def main():
     start = time.time()
     global args
     data_options = {
-        'max_num_nbr': float(args.max_num_nbr),
+        'max_num_nbr': int(args.max_num_nbr),
         'radius':float(args.radius),
         'gstart':float(args.gstart),
         'gstop':float(args.gstop),
-        'gresolution':float(args.gresolution),
+        'gresolution':int(args.gresolution),
         'gwidth':float(args.gwidth),
         'random_seed':123
     }
@@ -144,13 +144,13 @@ def main():
         'val_ratio':float(args.val_ratio),
         'test_ratio':float(args.test_ratio),
         'batch_size':int(args.batch_size),
-        'num_workers':int(args.num_workers)
+        'num_workers':int(args.workers)
     }
     model_options = {
         'hidden_dim':int(args.hidden_dim),
         'n_conv_layer':int(args.n_conv_layer),
         'n_linear':int(args.n_linear),
-        'dropout_rate':int(args.dropout_rate)
+        'dropout_rate':float(args.dropout_rate)
     }
     train_options = {
         'epochs':int(args.epochs),
@@ -160,10 +160,8 @@ def main():
         'loss_func':args.loss_func
     }
     
-    
-    
     if args.mode == 'train':
-        train_losses, val_losses, test_loss = train(
+        train_losses, val_losses, test_loss = train.train(
             args.root_dir,
             data_options,
             batch_options,
@@ -178,7 +176,7 @@ def main():
     elif args.mode == 'predict':
         pass
 
-
-
+if __name__ == "__main__":
+    main()
 
 
