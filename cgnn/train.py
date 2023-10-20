@@ -4,29 +4,42 @@ Created on Wed May 31 23:34:03 2023
 """
 
 import os
-
-from data import generate_dataset, data_loader
-from model import GCNN
 import torch
+import copy
+import numpy as np
 from torch import nn
 from torch import optim
-import copy
+
+from cgnn.utils import write_csv
+from cgnn.model import GCNN
+from cgnn.data import generate_dataset, data_loader
 
 def evaluate(
     model,
     loader,
-    loss_func,
     device,
+    loss_func=None,
+    target=None,
+    predict=False
 ):
-    total_loss = 0
-    count = 0
-    for data in loader:
-        data = data.to(device=device)
-        pred = model(data)
-        loss = loss_func(torch.squeeze(pred), torch.squeeze(data.y))
-        total_loss += loss.item()
-        # count += pred.size(0)
-        count += 1
+    with torch.no_grad():
+        total_loss = 0
+        count = 0
+        for data in loader:
+            data = data.to(device=device)
+            pred = model(data)
+            pred = torch.squeeze(pred, 0)
+            if loss_func != None:
+                loss = loss_func(pred, data.y)
+                total_loss += loss.item()
+                # count += pred.size(0)
+            count += 1
+            if target != None:
+                if predict:
+                    result = np.stack(map(np.array, (data.cif_id, pred)), axis=1)
+                else:
+                    result = np.stack(map(np.array, (data.cif_id, data.y, pred)), axis=1)
+                write_csv(result, target)
     return total_loss/count
 
 def train(
@@ -52,7 +65,9 @@ def train(
     # model = GCN(dataset)
     
     # load existed model
-    saved_model = os.path.join(root_dir, 'saved_model.pt')
+    saved_model = os.path.join(root_dir, 'checkpoint.pt')
+    entire_model = os.path.join(root_dir, 'model.pt')
+    
     if os.path.exists(saved_model):
         print('resume from the saved model')
         model.load_state_dict(torch.load(saved_model, map_location=device))
@@ -99,7 +114,7 @@ def train(
         scheduler.step(epoch_train_loss)
        
         # evaluate the model on the validation set
-        cur_loss = evaluate(model, val_loader, loss_func, device)
+        cur_loss = evaluate(model, val_loader, device, loss_func=loss_func)
         val_losses.append(cur_loss)
         print('validation loss after epoch {} is {}'.format(epoch+1, cur_loss))
         # save the best model
@@ -109,11 +124,15 @@ def train(
             best_score = cur_loss
     
     # evaluate on the traning set
-    best_loss = evaluate(best_model, test_loader, loss_func, device)
-    last_loss = evaluate(model, test_loader, loss_func, device)
+    target = os.path.join(root_dir, 'test_results.csv')
+    best_loss = evaluate(best_model, test_loader, device, target=target, loss_func=loss_func)
+    last_loss = evaluate(model, test_loader, device, target=target, loss_func=loss_func)
     
-    print('loss for the best model on the test set is {}'.format(best_loss))
-    print('loss for the last model on the test set is {}'.format(last_loss))
+    # save the entire model
+    torch.save(best_model, entire_model)
+    
+    print('loss of the best model on the test set is {}'.format(best_loss))
+    print('loss of the last model on the test set is {}'.format(last_loss))
     
     return train_losses, val_losses, [best_loss, last_loss]
     

@@ -17,7 +17,7 @@ from pymatgen.core.structure import Structure
 from torch_geometric.data import DataLoader, InMemoryDataset, Data
 from torch_geometric.utils import add_self_loops
 
-from atom_props import ATOM_PROPS
+from cgnn.atom_props import ATOM_PROPS
     
 def gaussian_converter(nbr_dists, start, stop, resolution, width):
     offset = torch.linspace(start, stop, resolution)
@@ -66,6 +66,7 @@ def generate_dataset(root_dir, data_options):
         Dataset_pyg(root_dir, data_options).process()
         dataset = Dataset_pyg(root_dir, data_options)
     return dataset
+
 
 class Dataset_pyg(InMemoryDataset):
     def __init__(self,
@@ -176,6 +177,7 @@ class Dataset_pyg(InMemoryDataset):
             data.edge_attr = edge_attr
             data.symmetry = torch.Tensor(symmetry)
             data.global_idx = torch.Tensor(global_idx)
+            data.cif_id = cif_id
             data_list.append(data)       
 
             ## set target values
@@ -188,7 +190,7 @@ class Dataset_pyg(InMemoryDataset):
             # print(data)
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
-       
+           
 
 if __name__ == 'main':
     # root_dir = r'D:\Dropbox\Vasp_home\Machine_learning\machine-learning\cgcnn_ours\tests'

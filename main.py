@@ -9,7 +9,7 @@ import sys
 import matplotlib.pyplot as plt
 import os
 
-from cgcnn_ours import train, predict
+from cgnn import train, predict
 
 parser = argparse.ArgumentParser(description='CGNN')
 
@@ -174,7 +174,11 @@ def main():
         plt.savefig(os.path.join(args.root_dir, 'epoch_loss.png'))
         
     elif args.mode == 'predict':
-        pass
+        predict.predict(
+            args.root_dir,
+            data_options,
+            args.loss_func
+        )
 
 if __name__ == "__main__":
     main()
