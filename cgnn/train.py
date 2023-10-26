@@ -12,6 +12,8 @@ from torch import optim
 
 from cgnn.utils import write_csv
 from cgnn.model import GCNN
+from cgnn.GAT import GAT
+from cgnn.GCN_GAT import CGNNGAT
 from cgnn.data import generate_dataset, data_loader
 
 def evaluate(
@@ -34,16 +36,21 @@ def evaluate(
                 total_loss += loss.item()
                 # count += pred.size(0)
             count += 1
-            if target != None:
-                if predict:
-                    result = np.stack(map(np.array, (data.cif_id, pred)), axis=1)
-                else:
-                    result = np.stack(map(np.array, (data.cif_id, data.y, pred)), axis=1)
-                write_csv(result, target)
+            #if target != None:
+            #    temp_y = copy.deepcopy(data.y)
+            #    temp_y = temp_y.detach().cpu()
+            #    temp_id = copy.deepcopy(data.cif_id)
+            #    #temp_id = temp_id.detach().cpu()
+            #    if predict:
+            #        result = np.stack(list(map(np.array, (temp_id, pred))), axis=1)
+            #    else:
+            #        result = np.stack(list(map(np.array, (temp_id, pred))), axis=1)
+            #    write_csv(result, target)
     return total_loss/count
 
 def train(
     root_dir,
+    model,
     data_options,
     batch_options,
     model_options,
@@ -61,9 +68,12 @@ def train(
     in_dim = dataset.num_features
     train_loader, val_loader, test_loader = data_loader(dataset, batch_options)
 
-    model = GCNN(in_dim, 1, **model_options)
-    # model = GCN(dataset)
-    
+    if model == 'CGNN':
+        model = GCNN(in_dim, 1, **model_options)
+    elif model == 'GAT':
+        model = GAT(in_dim, 1, **model_options)
+    elif model == 'CGNNGAT':
+        model = CGNNGAT(in_dim, 1, **model_options)
     # load existed model
     saved_model = os.path.join(root_dir, 'checkpoint.pt')
     entire_model = os.path.join(root_dir, 'model.pt')

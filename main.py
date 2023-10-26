@@ -24,6 +24,11 @@ parser.add_argument(
     required=True
 )
 parser.add_argument(
+    '--model',
+    default='CGNN',
+    help='choose a model from CGNN and GAT',
+)
+parser.add_argument(
     '--max_num_nbr',
     default='12',
     help='max number of neighbors'
@@ -163,6 +168,7 @@ def main():
     if args.mode == 'train':
         train_losses, val_losses, test_loss = train.train(
             args.root_dir,
+            args.model,
             data_options,
             batch_options,
             model_options,

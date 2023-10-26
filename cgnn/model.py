@@ -45,11 +45,11 @@ class GCNN(torch.nn.Module):
         self.dropout = Dropout(dropout_rate)
         
         # Post cgnn layers
-        self.mlp = MLP(hidden_dim * 2 + 7, n_linear)
+        self.mlp = MLP(hidden_dim * 2, n_linear)
     
     def forward(self, data):
-        x, edge_index, edge_dist, symmetry, global_idx = \
-            data.x, data.edge_index, data.edge_dist, data.symmetry, data.global_idx
+        x, edge_index, edge_dist, global_info = \
+            data.x, data.edge_index, data.edge_dist,  data.global_info
         # print(data)
         # print('symmetry ',data.symmetry.size())
         # print('global index ',data.global_idx.size())
@@ -66,8 +66,8 @@ class GCNN(torch.nn.Module):
         x = self.set2set(x, data.batch)
         
         # add global featrures here
-        symmetry = symmetry.reshape(len(symmetry)//7, 7)
-        x = torch.cat((x, symmetry), 1)
+        # symmetry = symmetry.reshape(len(symmetry)//7, 7)
+        # x = torch.cat((x, symmetry), 1)
         x = self.dropout(x)
 
         # post cgnn    

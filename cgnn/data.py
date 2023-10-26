@@ -151,12 +151,22 @@ class Dataset_pyg(InMemoryDataset):
             # get crystal system
             system = np.digitize(crystal.get_space_group_info()[1],
                                  np.array([3, 16, 75, 143, 168, 195])) 
+            
+            # get global features
             symmetry = np.zeros(7)
             symmetry[system] = 1
-            # get global atom indices
+            
             counts = np.unique(atom_fea, return_counts=True)
-            global_idx = np.zeros(len(ATOM_PROPS['1']))
-            global_idx[counts[0].astype(int)] += counts[1] / len(atom_fea)
+            global_idx = np.zeros(len(ATOM_PROPS))
+            global_idx[counts[0].astype(int) - 1] += counts[1] / len(atom_fea)
+            
+            all_global = np.concatenate((symmetry, global_idx))
+            
+            global_info = np.repeat(
+                all_global[np.newaxis, ...],
+                len(atom_fea),
+                axis=0
+            )
             
             edge_index, edge_weight = add_self_loops(
                 torch.LongTensor(edge_index), torch.Tensor(edge_dist), fill_value=0
@@ -175,8 +185,9 @@ class Dataset_pyg(InMemoryDataset):
             data.edge_index = edge_index
             data.edge_dist = edge_weight
             data.edge_attr = edge_attr
-            data.symmetry = torch.Tensor(symmetry)
-            data.global_idx = torch.Tensor(global_idx)
+            # data.symmetry = torch.Tensor(symmetry)
+            # data.global_idx = torch.Tensor(global_idx)
+            data.global_info = torch.Tensor(global_info)
             data.cif_id = cif_id
             data_list.append(data)       
 
