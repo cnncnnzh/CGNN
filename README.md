@@ -28,4 +28,4 @@ Examples can be found in tests_train and test_predict folders.
 ## References
 https://www.cell.com/patterns/fulltext/S2666-3899(22)00076-9#%20
 
-https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.120.145301
+(https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.120.145301)https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.120.145301
