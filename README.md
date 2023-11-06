@@ -26,6 +26,6 @@
 Examples can be found in tests_train and test_predict folders.
 
 ## References
-[https://github.com/txie-93/cgcnn](https://www.cell.com/patterns/fulltext/S2666-3899(22)00076-9#%20)https://www.cell.com/patterns/fulltext/S2666-3899(22)00076-9#%20
+https://www.cell.com/patterns/fulltext/S2666-3899(22)00076-9#%20
 
-[https://github.com/usccolumbia/deeperGATGNN](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.120.145301)https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.120.145301
+https://pubmed.ncbi.nlm.nih.gov/29694125/
