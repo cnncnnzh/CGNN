@@ -11,9 +11,11 @@ from torch import nn
 from torch import optim
 
 from cgnn.utils import write_csv
-from cgnn.model import GCNN
-from cgnn.GAT import GAT
-from cgnn.GCN_GAT import CGNNGAT
+from cgnn.models.GCNN import GCNN
+from cgnn.models.GAT import GAT
+from cgnn.models.GCN_GAT import GCNGAT
+from cgnn.models.GCN_GAT_SKIP import SKIP
+# from cgnn.GAT_skip import GAT_skip
 from cgnn.data import generate_dataset, data_loader
 
 def evaluate(
@@ -72,12 +74,19 @@ def train(
         model = GCNN(in_dim, 1, **model_options)
     elif model == 'GAT':
         model = GAT(in_dim, 1, **model_options)
-    elif model == 'CGNNGAT':
-        model = CGNNGAT(in_dim, 1, **model_options)
+    elif model == 'GCNGAT':
+        model = GCNGAT(in_dim, 1, **model_options)
+    elif model == 'SKIP':
+        model = SKIP(in_dim, 1, **model_options)
+        
     # load existed model
-    saved_model = os.path.join(root_dir, 'checkpoint.pt')
-    entire_model = os.path.join(root_dir, 'model.pt')
+    model_dir = os.path.join(root_dir, 'models')
+    saved_model = os.path.join(model_dir, 'checkpoint.pt')
+    entire_model = os.path.join(model_dir, 'model.pt')
     
+    if not os.path.exists(model_dir):
+        os.mkdir(model_dir)
+
     if os.path.exists(saved_model):
         print('resume from the saved model')
         model.load_state_dict(torch.load(saved_model, map_location=device))

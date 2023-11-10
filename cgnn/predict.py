@@ -38,8 +38,9 @@ def predict(
         print('running on gpu')
     if device.type == 'cpu':
         print('running on cpu')
-        
-    model_path = os.path.join(root_dir, 'model.pt')
+    
+    model_dir = os.path.join(root_dir, 'models')
+    model_path = os.path.join(model_dir, 'model.pt')
     assert os.path.exists(model_path), 'model not founded'
     model = torch.load(model_path)
     # model.to(device)

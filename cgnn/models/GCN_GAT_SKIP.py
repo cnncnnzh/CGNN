@@ -59,7 +59,7 @@ class Global_Attention(torch.nn.Module):
         x = self.out_layer(x)
         return softmax(x, batch)
             
-class CGNNGAT(torch.nn.Module):
+class SKIP(torch.nn.Module):
     '''
     main graph concolutional neuron network class
     '''
@@ -70,9 +70,9 @@ class CGNNGAT(torch.nn.Module):
         hidden_dim=64,
         n_conv_layer=5,
         n_linear=1,
-        dropout_rate=0.2
+        dropout_rate=0.2,
     ):
-        super(CGNNGAT, self).__init__()
+        super(SKIP, self).__init__()
 
         # setup linear layer before gnn
         self.lin = Linear(in_dim, hidden_dim)
@@ -107,12 +107,16 @@ class CGNNGAT(torch.nn.Module):
 
         # pre cgnn
         x = self.act(self.lin(x))
+        prev = x
         
         # gatcnn
-        for conv in self.conv_list:
+        for i, conv in enumerate(self.conv_list):
             x = conv(x, edge_index, edge_dist)
             x = self.batch_norm(x)
-        x = self.act(x)
+            #skip connection
+            x = torch.add(x, prev)
+            x = self.dropout(x)
+            prev = x
         
         # weigh each node with global attention
         node_weight = self.gat(x, global_info, data.batch)

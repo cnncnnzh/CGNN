@@ -26,7 +26,7 @@ parser.add_argument(
 parser.add_argument(
     '--model',
     default='CGNN',
-    help='choose a model from CGNN and GAT',
+    help='choose a model from CGNN, GAT, GCNGAT',
 )
 parser.add_argument(
     '--max_num_nbr',
