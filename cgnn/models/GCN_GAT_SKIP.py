@@ -8,7 +8,67 @@ from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d, Dropout
 from torch_geometric.utils import softmax
 from torch_geometric.nn import global_mean_pool, Set2Set, GCNConv, DiffGroupNorm
 from torch_geometric.utils import add_self_loops, degree
+from torch_geometric.utils import softmax as tg_softmax
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import Parameter
+from torch_geometric.nn.conv  import MessagePassing
+from torch_geometric.nn.inits import glorot, zeros
 
+class GATGNN_AGAT_LAYER(MessagePassing):
+    def __init__(self, dim, act, dropout_rate, fc_layers=2, **kwargs):
+        super(GATGNN_AGAT_LAYER, self).__init__(aggr='add',flow='target_to_source', **kwargs)
+
+        self.act          = act
+        self.fc_layers    = fc_layers
+
+
+        self.dropout_rate = dropout_rate
+ 
+        # FIXED-lines ------------------------------------------------------------
+        self.heads             = 4
+        self.add_bias          = True
+        self.neg_slope         = 0.2
+
+        self.bn1               = nn.BatchNorm1d(self.heads)
+        self.W                 = Parameter(torch.Tensor(dim*2,self.heads*dim))
+        self.att               = Parameter(torch.Tensor(1,self.heads,2*dim))
+        self.dim               = dim
+
+        if self.add_bias  : self.bias = Parameter(torch.Tensor(dim))
+        else              : self.register_parameter('bias', None)
+        self.reset_parameters()
+        # FIXED-lines -------------------------------------------------------------
+
+    def reset_parameters(self):
+        glorot(self.W)
+        glorot(self.att)
+        zeros(self.bias)
+
+    def forward(self, x, edge_index, edge_attr):
+        return self.propagate(edge_index, x=x,edge_attr=edge_attr)
+
+    def message(self, edge_index_i, x_i, x_j, size_i, edge_attr): 
+        out_i   = torch.cat([x_i,edge_attr],dim=-1)
+        out_j   = torch.cat([x_j,edge_attr],dim=-1)
+        
+        out_i   = self.act(torch.matmul(out_i,self.W))
+        out_j   = self.act(torch.matmul(out_j,self.W))
+        out_i   = out_i.view(-1, self.heads, self.dim)
+        out_j   = out_j.view(-1, self.heads, self.dim)
+
+        alpha   = self.act((torch.cat([out_i, out_j], dim=-1)*self.att).sum(dim=-1))
+        alpha   = self.act(self.bn1(alpha))
+        alpha   = tg_softmax(alpha,edge_index_i)
+
+        alpha   = F.dropout(alpha, p=self.dropout_rate, training=self.training)
+        out_j     = (out_j * alpha.view(-1, self.heads, 1)).transpose(0,1)
+        return out_j
+
+    def update(self, aggr_out):
+        out = aggr_out.mean(dim=0)
+        if self.bias is not None:  out = out + self.bias
+        return out
     
 class MLP(torch.nn.Module):
     '''
@@ -67,6 +127,7 @@ class SKIP(torch.nn.Module):
         self,
         in_dim,
         out_dim,
+        edge_dim,
         hidden_dim=64,
         n_conv_layer=5,
         n_linear=1,
@@ -74,16 +135,20 @@ class SKIP(torch.nn.Module):
     ):
         super(SKIP, self).__init__()
 
+
+        print('Model used: CGN + skip connection + global attention')
         # setup linear layer before gnn
-        self.lin = Linear(in_dim, hidden_dim)
-        print('Model used: CGN + global attention')
+        self.lin_node= Linear(in_dim, hidden_dim)
+        self.edge_node= Linear(edge_dim, hidden_dim)
+
         #setup activation layer
         self.act = ReLU()
                 
         # setup message passing layers
         self.conv_list = ModuleList()
         for _ in range(n_conv_layer):
-            conv = GCNConv(hidden_dim, hidden_dim, improved=True) 
+            # conv = GCNConv(hidden_dim * 2, hidden_dim, improved=True) 
+            conv = GATGNN_AGAT_LAYER(hidden_dim, self.act, dropout_rate)
             self.conv_list.append(conv)
 
         # batch normalization for fast convergence
@@ -102,16 +167,18 @@ class SKIP(torch.nn.Module):
         self.mlp = MLP(hidden_dim * 2, n_linear)
     
     def forward(self, data):
-        x, edge_index, edge_dist, global_info = \
-            data.x, data.edge_index, data.edge_dist, data.global_info
-
+        x, edge_index, edge_dist, global_info, edge_attr = \
+            data.x, data.edge_index, data.edge_dist, data.global_info, data.edge_attr
+        
         # pre cgnn
-        x = self.act(self.lin(x))
+        x = self.act(self.lin_node(x))
+        edge_attr = self.act(self.edge_node(edge_attr))
         prev = x
         
         # gatcnn
         for i, conv in enumerate(self.conv_list):
-            x = conv(x, edge_index, edge_dist)
+            # x = conv(x, edge_index, edge_dist)
+            x = conv(x, edge_index, edge_attr)
             x = self.batch_norm(x)
             #skip connection
             x = torch.add(x, prev)

@@ -29,7 +29,7 @@ def gaussian_converter(nbr_dists, start, stop, resolution, width):
 def data_loader(dataset,
                 batch_options):
     total_size = len(dataset)
-    assert batch_options['train_ratio'] + batch_options['val_ratio'] + batch_options['test_ratio'] == 1
+    assert abs(batch_options['train_ratio'] + batch_options['val_ratio'] + batch_options['test_ratio'] - 1) < 0.0001
     train_size = int(batch_options['train_ratio'] * total_size)
     val_size = int(batch_options['val_ratio'] * total_size)
     test_size = int(batch_options['test_ratio'] * total_size)

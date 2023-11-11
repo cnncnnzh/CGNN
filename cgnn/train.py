@@ -68,6 +68,7 @@ def train(
     dataset = generate_dataset(root_dir, data_options)
     
     in_dim = dataset.num_features
+    edge_dim = dataset.num_edge_features
     train_loader, val_loader, test_loader = data_loader(dataset, batch_options)
 
     if model == 'CGNN':
@@ -77,7 +78,7 @@ def train(
     elif model == 'GCNGAT':
         model = GCNGAT(in_dim, 1, **model_options)
     elif model == 'SKIP':
-        model = SKIP(in_dim, 1, **model_options)
+        model = SKIP(in_dim, 1, edge_dim, **model_options)
         
     # load existed model
     model_dir = os.path.join(root_dir, 'models')
