@@ -129,19 +129,20 @@ def train(
             # train_count += torch.squeeze(data.y).size(0)
         epoch_train_loss /= train_count
         train_losses.append(epoch_train_loss)
-        print('training loss after epoch {} is {}'.format(epoch+1, epoch_train_loss))
         
         scheduler.step(epoch_train_loss)
        
         # evaluate the model on the validation set
         cur_loss = evaluate(model, val_loader, device, loss_func=loss_func)
         val_losses.append(cur_loss)
-        print('validation loss after epoch {} is {}'.format(epoch+1, cur_loss))
         # save the best model
         if cur_loss < best_score:
             best_model = copy.deepcopy(model)
             torch.save(model.state_dict(), saved_model)
             best_score = cur_loss
+        print('Epoch:{}, Training Loss:{:.6f}, Validation Loss:{:.6f}, Learning Rate:{:.6f}'.format(
+            epoch, epoch_train_loss, cur_loss, scheduler.optimizer.param_groups[0]["lr"]
+        ))
     
     # evaluate on the traning set
     target = os.path.join(root_dir, 'test_results.csv')
