@@ -11,7 +11,7 @@ import re
 import os
 
 # REPLACE WITH YOUR PATH
-TARGET_PATH = r'D:\Dropbox\Vasp_home\Machine_learning on TP\Kyoto-phonopy'
+TARGET_PATH = r'./Kyoto'
 
 BASE_URL = 'http://phonondb.mtl.kyoto-u.ac.jp/_downloads/'
 PATTERN = r"mp-\d+-20180417.tar.lzma"

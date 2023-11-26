@@ -188,7 +188,7 @@ def get_Guido(directory, p_dict):
 
 def main():
     # SPECIFY YOUR MP_API_KEY
-    MP_API_KEY = "E2wL3InSvRFPLkSldR0aF2MYsaHkI865"    
+    MP_API_KEY = "YOUR_API_KEY"    
     # SPECIFY THE KYOTO DATA PATH  
     directory = r'D:\Dropbox\Vasp_home\Machine_learning\Kyoto-phonopy'
     # SPECIFY YOUR TARGET PATH
