@@ -50,8 +50,7 @@ def get_distorted_structure(structure):
     pass
     
 
-
-MP_API_KEY = "E2wL3InSvRFPLkSldR0aF2MYsaHkI865"    
+MP_API_KEY = "YOUR_API_KEY"    
 
 org_dir = r'D:\Dropbox\Vasp_home\Machine_learning\neg_freq'
 material_ids = []
