@@ -4,7 +4,7 @@ Created on Wed May 31 23:34:03 2023
 """
 
 import torch
-from torch.nn import Linear, ModuleList, ReLU, BatchNorm1d, Dropout
+from torch.nn import Linear, ModuleList, ReLU, Softplus, BatchNorm1d, Dropout
 from torch_geometric.utils import softmax
 from torch_geometric.nn import global_mean_pool, Set2Set, GCNConv, DiffGroupNorm
 from torch_geometric.utils import add_self_loops, degree
@@ -76,12 +76,13 @@ class MLP(torch.nn.Module):
     '''
     def __init__(self,
                  in_dim,
-                 n_linear):
+                 n_linear,
+                 act):
         super(MLP, self).__init__()
         self.lin_list = ModuleList()
         for _ in range(n_linear):
             self.lin_list.append(Linear(in_dim, in_dim))
-        self.act = ReLU()
+        self.act = getattr(F, act)
         self.out_1 = Linear(in_dim, 32)
         self.out_2 = Linear(32, 1)
         
@@ -97,7 +98,7 @@ class MLP(torch.nn.Module):
 
 
 class Global_Attention(torch.nn.Module):
-    def __init__(self, dim, n_layers):
+    def __init__(self, dim, n_layers, act):
         super(Global_Attention, self).__init__()
         
         self.in_layer = torch.nn.Linear(dim + 107, dim)
@@ -107,8 +108,8 @@ class Global_Attention(torch.nn.Module):
             self.lin_list.append(torch.nn.Linear(dim, dim))
         
         self.out_layer = torch.nn.Linear(dim, 1)
-        self.act = ReLU()
-        
+        self.act = getattr(F, act)        
+
     def forward(self, x, global_info, batch):
         x = torch.cat((x, global_info), dim=-1)
         x = self.in_layer(x)
@@ -132,6 +133,7 @@ class SKIP(torch.nn.Module):
         n_conv_layer=5,
         n_linear=1,
         dropout_rate=0.2,
+        act="softplus"
     ):
         super(SKIP, self).__init__()
 
@@ -142,7 +144,7 @@ class SKIP(torch.nn.Module):
         self.edge_node= Linear(edge_dim, hidden_dim)
 
         #setup activation layer
-        self.act = ReLU()
+        self.act = self.act = getattr(F, act)
                 
         # setup message passing layers
         self.conv_list = ModuleList()
@@ -152,10 +154,11 @@ class SKIP(torch.nn.Module):
             self.conv_list.append(conv)
 
         # batch normalization for fast convergence
-        self.batch_norm = BatchNorm1d(hidden_dim)
+        self.batch_norm = DiffGroupNorm(hidden_dim, 10)       
+        #self.batch_norm = BatchNorm1d(hidden_dim)
                 
         # global attention layer
-        self.gat = Global_Attention(hidden_dim, 2)
+        self.gat = Global_Attention(hidden_dim, 2, act)
         
         # pooling layer
         self.set2set = Set2Set(hidden_dim, 3)
@@ -164,7 +167,7 @@ class SKIP(torch.nn.Module):
         self.dropout = Dropout(dropout_rate)
         
         # Post cgnn layers
-        self.mlp = MLP(hidden_dim * 2, n_linear)
+        self.mlp = MLP(hidden_dim * 2, n_linear, act)
     
     def forward(self, data):
         x, edge_index, edge_dist, global_info, edge_attr = \
@@ -172,7 +175,8 @@ class SKIP(torch.nn.Module):
         
         # pre cgnn
         x = self.act(self.lin_node(x))
-        edge_attr = self.act(self.edge_node(edge_attr))
+        edge_attr = self.edge_node(edge_attr)
+        edge_attr = getattr(F, 'leaky_relu')(edge_attr,0.2)
         prev = x
         
         # gatcnn
@@ -181,7 +185,7 @@ class SKIP(torch.nn.Module):
             x = conv(x, edge_index, edge_attr)
             x = self.batch_norm(x)
             #skip connection
-            x = torch.add(x, prev)
+            x = torch.add(x,  prev)
             x = self.dropout(x)
             prev = x
         
@@ -191,7 +195,7 @@ class SKIP(torch.nn.Module):
         
         # pooling and dropout
         x = self.set2set(x, data.batch)
-        x = self.dropout(x)
+        #x = self.dropout(x)
 
         # post cgnn    
         x = self.mlp(x)

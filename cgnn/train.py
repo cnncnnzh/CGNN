@@ -100,7 +100,8 @@ def train(
     )   
     
     # setup scheduler
-    scheduler = getattr(optim.lr_scheduler, train_options["scheduler"])(optimizer)
+    scheduler = getattr(optim.lr_scheduler, train_options["scheduler"])(
+        optimizer, mode="min", factor=0.8, patience=50, min_lr=0.000001, threshold=0.00001)
     
     #setup loss fnction
     loss_func = getattr(nn, train_options['loss_func'])()
@@ -140,7 +141,7 @@ def train(
             best_model = copy.deepcopy(model)
             torch.save(model.state_dict(), saved_model)
             best_score = cur_loss
-        print('Epoch:{}, Training Loss:{:.6f}, Validation Loss:{:.6f}, Learning Rate:{:.6f}'.format(
+        print('Epoch:{}, Training Loss:{:.6f}, Validation Loss:{:.6f}, Learning Rate:{:.8f}'.format(
             epoch, epoch_train_loss, cur_loss, scheduler.optimizer.param_groups[0]["lr"]
         ))
     
